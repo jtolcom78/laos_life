@@ -12,3 +12,5 @@
 !index.ts
 !app.d.ts
 !metro.config.js
+!global.css
+!nativewind-env.d.ts
