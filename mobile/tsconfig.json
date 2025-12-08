@@ -5,7 +5,8 @@
     "**/*.tsx",
     "**/*.js",
     "**/*.jsx",
-    "app.d.ts"
+    "app.d.ts",
+    "nativewind-env.d.ts"
   ],
   "compilerOptions": {
     "strict": true

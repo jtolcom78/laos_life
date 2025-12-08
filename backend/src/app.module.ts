@@ -30,13 +30,17 @@ import { Banner } from './banners/entities/banner.entity';
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.SUPABASE_HOST || 'aws-1-ap-southeast-1.pooler.supabase.com',
+      url: process.env.DATABASE_URL, // Use connection string if available
+      host: process.env.DATABASE_URL ? undefined : (process.env.SUPABASE_HOST || 'aws-1-ap-southeast-1.pooler.supabase.com'),
       port: 6543,
-      username: process.env.SUPABASE_USER || 'postgres.htftpmuovlrzzvzuogii',
-      password: process.env.SUPABASE_PASSWORD || 'j761006',
+      username: process.env.DATABASE_URL ? undefined : (process.env.SUPABASE_USER || 'postgres.htftpmuovlrzzvzuogii'),
+      password: process.env.DATABASE_URL ? undefined : (process.env.SUPABASE_PASSWORD || 'j761006'),
       database: 'postgres',
       entities: [User, Category, Product, RealEstate, Job, Shop, Post, Car, CommonCode, AccessLog, Banner],
       synchronize: true, // Enable sync for dev to create tables
+      ssl: {
+        rejectUnauthorized: false, // Required for Supabase connection
+      },
     }),
     PostsModule,
     UploadModule,
