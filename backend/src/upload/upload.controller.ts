@@ -2,7 +2,7 @@ import { Controller, Post, UseInterceptors, UploadedFile, Body, BadRequestExcept
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { extname } from 'path';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const ALLOWED_FOLDERS = [
     'banners', 'posts', 'products', 'real_estates', 'rents', 'cars', 'jobs',
@@ -12,10 +12,19 @@ const ALLOWED_FOLDERS = [
 
 @Controller('upload')
 export class UploadController {
-    private supabase = createClient(
-        process.env.SUPABASE_URL || '',
-        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
+    private supabase: SupabaseClient;
+
+    constructor() {
+        console.log('DEBUG: UploadController initializing...');
+        console.log('DEBUG: SUPABASE_URL exists?', !!process.env.SUPABASE_URL);
+        console.log('DEBUG: SUPABASE_SERVICE_ROLE_KEY exists?', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+        console.log('DEBUG: SUPABASE_KEY exists?', !!process.env.SUPABASE_KEY);
+
+        const supabaseUrl = process.env.SUPABASE_URL || '';
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '';
+
+        this.supabase = createClient(supabaseUrl, supabaseKey);
+    }
 
     @Post()
     @UseInterceptors(FileInterceptor('file', {
