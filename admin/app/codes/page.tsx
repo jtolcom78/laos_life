@@ -42,19 +42,29 @@ export default function CodeManagementPage() {
         isActive: true
     });
 
-    useEffect(() => {
-        fetchCodes();
-    }, []);
+    const getDisplayValue = (code: CommonCode) => {
+        const lang = i18n.language || 'ko';
+        if (lang.startsWith('en')) return code.valueEn;
+        if (lang.startsWith('lo')) return code.valueLo;
+        if (lang.startsWith('zh')) return code.valueZh;
+        return code.valueKo;
+    };
 
-    const fetchCodes = async () => {
-        setLoading(true);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            const res = await axios.get('http://localhost:3000/common-codes');
-            setCodes(res.data);
+            if (editingCode) {
+                const res = await axios.patch(`${API_URL}/common-codes/${editingCode.id}`, formData);
+                setCodes(codes.map(c => c.id === editingCode.id ? res.data : c));
+            } else {
+                const res = await axios.post(`${API_URL}/common-codes`, formData);
+                setCodes([...codes, res.data]);
+            }
+            close();
         } catch (error) {
-            console.error('Failed to fetch codes', error);
-        } finally {
-            setLoading(false);
+            console.error('Failed to save code', error);
+            alert('Failed to save code');
         }
     };
 
@@ -81,8 +91,9 @@ export default function CodeManagementPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure you want to delete this code?')) return;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            await axios.delete(`http://localhost:3000/common-codes/${id}`);
+            await axios.delete(`${API_URL}/common-codes/${id}`);
             setCodes(codes.filter(c => c.id !== id));
         } catch (error) {
             console.error('Failed to delete code', error);
@@ -90,34 +101,9 @@ export default function CodeManagementPage() {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            if (editingCode) {
-                const res = await axios.patch(`http://localhost:3000/common-codes/${editingCode.id}`, formData);
-                setCodes(codes.map(c => c.id === editingCode.id ? res.data : c));
-            } else {
-                const res = await axios.post('http://localhost:3000/common-codes', formData);
-                setCodes([...codes, res.data]);
-            }
-            close();
-        } catch (error) {
-            console.error('Failed to save code', error);
-            alert('Failed to save code');
-        }
-    };
-
     // Derived values
     const uniqueTypes = Array.from(new Set(codes.map(c => c.type)));
     const filteredCodes = (!filterType || filterType === 'ALL') ? codes : codes.filter(c => c.type === filterType);
-
-    const getDisplayValue = (code: CommonCode) => {
-        const lang = i18n.language || 'ko';
-        if (lang.startsWith('en')) return code.valueEn;
-        if (lang.startsWith('lo')) return code.valueLo;
-        if (lang.startsWith('zh')) return code.valueZh;
-        return code.valueKo;
-    }
 
     const rows = filteredCodes.map((code) => (
         <Table.Tr key={code.id}>

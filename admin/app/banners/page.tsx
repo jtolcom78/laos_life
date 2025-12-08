@@ -45,8 +45,9 @@ export default function BannersPage() {
     }, []);
 
     const fetchBanners = async () => {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            const response = await axios.get('http://localhost:3000/banners'); // Adjust port if needed
+            const response = await axios.get(`${API_URL}/banners`);
             setBanners(response.data);
         } catch (error) {
             console.error('Failed to fetch banners:', error);
@@ -63,8 +64,9 @@ export default function BannersPage() {
         formData.append('file', files[0]);
         formData.append('folder', 'banners');
 
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            const response = await axios.post('http://localhost:3000/upload', formData, {
+            const response = await axios.post(`${API_URL}/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setImages(prev => ({ ...prev, [activeTab]: response.data.url }));
@@ -93,11 +95,12 @@ export default function BannersPage() {
             sortOrder
         };
 
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
             if (editingId) {
-                await axios.patch(`http://localhost:3000/banners/${editingId}`, payload);
+                await axios.patch(`${API_URL}/banners/${editingId}`, payload);
             } else {
-                await axios.post('http://localhost:3000/banners', payload);
+                await axios.post(`${API_URL}/banners`, payload);
             }
             closeModal();
             fetchBanners();
@@ -108,8 +111,9 @@ export default function BannersPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure?')) return;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            await axios.delete(`http://localhost:3000/banners/${id}`);
+            await axios.delete(`${API_URL}/banners/${id}`);
             fetchBanners();
         } catch (error) {
             console.error('Delete failed:', error);

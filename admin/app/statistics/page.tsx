@@ -35,12 +35,13 @@ export default function StatisticsPage() {
 
     const fetchData = async () => {
         setLoading(true);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
             if (statsType === 'access') {
-                const res = await axios.get('http://localhost:3000/statistics/access');
+                const res = await axios.get(`${API_URL}/statistics/access`);
                 setAccessData(res.data);
             } else {
-                const res = await axios.get('http://localhost:3000/statistics/content');
+                const res = await axios.get(`${API_URL}/statistics/content`);
                 setContentData(res.data);
             }
         } catch (error) {

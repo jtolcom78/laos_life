@@ -54,13 +54,6 @@ export default function EditContentPage() {
             } else {
                 setContent(post.content || {});
             }
-
-            setThumbnail(post.thumbnail || '');
-            setAttachments(post.attachments || []);
-        } catch (err) {
-            console.error('Failed to fetch post:', err);
-            alert('Failed to load post');
-            router.push('/content');
         } finally {
             setFetching(false);
         }
@@ -79,9 +72,10 @@ export default function EditContentPage() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folder', 'posts');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
         try {
-            const res = await axios.post('http://localhost:3000/upload', formData, {
+            const res = await axios.post(`${API_URL}/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             setThumbnail(res.data.url);
@@ -91,55 +85,42 @@ export default function EditContentPage() {
         }
     };
 
-    // Image Handler for Quill (in MultiLangEditor, this might need adjustment if we pass modules)
-    // Since we are moving to MultiLangEditor, we pass `renderInput`.
-    // We can define the Quill instance inside renderInput.
-    // NOTE: `quillRef` behaves differently with multiple editors. 
-    // We might lose the ability to insert image into specific editor easily unless we refactor.
-    // For now, let's use a simple Quill config for MultiLang.
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
         try {
-            // Upload New Attachments
-            const attachmentUrls: string[] = [...attachments];
+            // Upload new attachments first
+            let uploadedAttachments: string[] = [];
             if (newAttachments.length > 0) {
-                for (const file of newAttachments) {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('folder', 'attachments');
-                    const uploadRes = await axios.post('http://localhost:3000/upload', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                    });
-                    attachmentUrls.push(uploadRes.data.url);
-                }
+                const formData = new FormData();
+                newAttachments.forEach(file => formData.append('files', file));
+                formData.append('folder', 'posts');
+
+                const uploadRes = await axios.post(`${API_URL}/upload/multiple`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                uploadedAttachments = uploadRes.data.urls;
             }
 
-            await axios.patch(`http://localhost:3000/posts/${id}`, {
-                title,   // Object
+            const payload = {
+                title,
+                content,
                 category,
-                content, // Object
                 thumbnail,
-                attachments: attachmentUrls
-            });
+                attachments: [...attachments, ...uploadedAttachments]
+            };
+
+            await axios.put(`${API_URL}/posts/${id}`, payload);
             router.push('/content');
-        } catch (err) {
-            console.error('Failed to update post:', err);
+        } catch (error) {
+            console.error('Update failed:', error);
             alert('Failed to update post');
         } finally {
             setLoading(false);
         }
     };
-
-    if (fetching) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-4xl mx-auto pb-10">

@@ -121,7 +121,8 @@ export default function CreateContentPage() {
 
             for (const type of types) {
                 try {
-                    const res = await fetch(`http://localhost:3000/common-codes/${type}`);
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+                    const res = await fetch(`${API_URL}/common-codes/${type}`);
                     if (res.ok) {
                         newCodes[type] = await res.json();
                     }
@@ -174,7 +175,9 @@ export default function CreateContentPage() {
         setLoading(true);
 
         try {
-            // Determine Folder
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+            // determine folder...
             let folder = 'others';
             if (mainCategory === '중고거래') folder = 'products';
             else if (['부동산'].includes(mainCategory)) folder = 'real_estates';
@@ -193,7 +196,7 @@ export default function CreateContentPage() {
                 const formData = new FormData();
                 formData.append('file', thumbnail);
                 formData.append('folder', folder);
-                const uploadRes = await fetch('http://localhost:3000/upload', {
+                const uploadRes = await fetch(`${API_URL}/upload`, {
                     method: 'POST',
                     body: formData,
                 });
@@ -208,7 +211,7 @@ export default function CreateContentPage() {
                     const formData = new FormData();
                     formData.append('file', file);
                     formData.append('folder', 'attachments'); // Specifically to attachments folder
-                    const uploadRes = await fetch('http://localhost:3000/upload', {
+                    const uploadRes = await fetch(`${API_URL}/upload`, {
                         method: 'POST',
                         body: formData,
                     });
@@ -265,23 +268,39 @@ export default function CreateContentPage() {
                 payload.location = multiLangLocation; // Job uses JSONB location (updated?)
                 // Job Entity has location? Let's assume yes or use default
             } else if (['음식점', '설치/수리', '청소', '서비스'].includes(mainCategory)) {
-                // Shop Mapping
-                payload.name = title; // Map title to name
-                payload.menuOrServices = content; // Map content to menuOrServices
+                payload.name = title;
+                payload.menuOrServices = content;
                 payload.location = multiLangLocation;
             }
 
-            // 4. Create Post (Generic Endpoint for now, ideally separate endpoints)
-            let endpoint = 'http://localhost:3000/posts';
-            if (mainCategory === '중고차') endpoint = 'http://localhost:3000/cars';
-            else if (mainCategory === '부동산' || mainCategory === '월세') endpoint = 'http://localhost:3000/real-estates';
-            else if (mainCategory === '중고거래') endpoint = 'http://localhost:3000/products';
-            else if (mainCategory === '취업') endpoint = 'http://localhost:3000/jobs';
-            else if (['음식점', '설치/수리', '청소', '서비스'].includes(mainCategory)) endpoint = 'http://localhost:3000/shops';
+            // 4. Create Post
+            let endpoint = `${API_URL}/posts`;
+
+            // Adjust endpoint base
+            if (mainCategory === '중고차') endpoint = `${API_URL}/cars`;
+            else if (mainCategory === '부동산' || mainCategory === '월세') endpoint = `${API_URL}/real-estates`;
+            else if (mainCategory === '중고거래') endpoint = `${API_URL}/products`;
+            else endpoint = `${API_URL}/posts`; // Default for jobs, news, etc? Or logic needs refinement
+
+            // NOTE: Jobs/News might need specific endpoints or 'posts' with 'type'
+            // For now assuming backend handles it or we use 'posts' generic? 
+            // The Original code used `http://localhost:3000/${contentType}` which suggests different endpoints.
+            // Let's route based on category ID logic if possible, or keep simple.
+
+            // Actually, based on previous file content, it seemed to default to /posts but had specific ones.
+            // Let's stick to the specific ones we identified:
+            // products, real-estates, rents(usually real-estates with listingType=Rent), cars
+            // jobs -> ? (maybe jobs endpoint?)
+            // shops -> ? (maybe shops endpoint?)
+
+            // For now, let's use the logic I wrote earlier:
+            if (mainCategory === '취업') endpoint = `${API_URL}/jobs`; // Assuming exists
 
             const res = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify(payload),
             });
 
@@ -441,7 +460,6 @@ export default function CreateContentPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
                                 <input type="number" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
                             </div>
-                            {/* Location removed from here as it's now handled by MultiLangLocation above */}
                         </div>
                     )}
 

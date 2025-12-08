@@ -18,8 +18,9 @@ export default function ContentPage() {
 
     const fetchData = async () => {
         setLoading(true);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            const response = await axios.get(`http://localhost:3000/${activeTab}`);
+            const response = await axios.get(`${API_URL}/${activeTab}`);
             setItems(response.data);
         } catch (err) {
             console.error(`Failed to fetch ${activeTab}:`, err);
@@ -30,8 +31,9 @@ export default function ContentPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure you want to delete this item?')) return;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            await axios.delete(`http://localhost:3000/${activeTab}/${id}`);
+            await axios.delete(`${API_URL}/${activeTab}/${id}`);
             setItems(items.filter(item => item.id !== id));
         } catch (err) {
             console.error('Failed to delete item:', err);

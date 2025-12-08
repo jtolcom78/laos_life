@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: laos-life-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_HOST
+        sync: false
+      - key: SUPABASE_USER
+        sync: false
+      - key: SUPABASE_PASSWORD
+        sync: false

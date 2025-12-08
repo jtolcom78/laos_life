@@ -21,18 +21,18 @@ export default function ClientLayout({
 
     useEffect(() => {
         setMounted(true);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         // Log access
-        fetch('http://localhost:3000/statistics/log', {
+        fetch(`${API_URL}/statistics/log`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: window.location.pathname })
+            body: JSON.stringify({ path: window.location.pathname, userAgent: navigator.userAgent })
         }).catch(err => console.error('Access log failed', err));
     }, []);
 
     const changeLanguage = (lng: string) => {
         i18n.changeLanguage(lng);
     };
-
     if (!mounted) return null;
 
     return (

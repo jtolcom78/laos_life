@@ -29,8 +29,9 @@ export default function UsersPage() {
     }, []);
 
     const fetchUsers = async () => {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         try {
-            const response = await axios.get('http://localhost:3000/users'); // Mock endpoint
+            const response = await axios.get(`${API_URL}/users`);
             // Mock data if empty
             if (!response.data || response.data.length === 0) {
                 setUsers([
