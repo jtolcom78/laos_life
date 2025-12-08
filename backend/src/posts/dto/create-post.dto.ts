@@ -1,6 +1,7 @@
 export class CreatePostDto {
-    title: string;
-    content: string;
+    title: any;
+    content: any;
     category?: string;
     thumbnail?: string;
+    attachments?: string[];
 }

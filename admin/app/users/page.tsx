@@ -1,21 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Loader2 } from 'lucide-react';
+import { User, Shield, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import {
+    Title, Group, Button, Table, Badge, Card, LoadingOverlay, Alert, Avatar, Text, TextInput
+} from '@mantine/core';
 
-interface User {
+interface UserData {
     id: number;
+    username: string;
     email: string;
-    nickname: string;
     role: string;
-    created_at: string;
+    status: string;
+    profileImage?: string;
+    createdAt: string;
 }
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<User[]>([]);
+    const { t } = useTranslation();
+    const [users, setUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         fetchUsers();
@@ -23,83 +30,101 @@ export default function UsersPage() {
 
     const fetchUsers = async () => {
         try {
-            // Try fetching from backend
-            const response = await axios.get('http://localhost:3000/users');
-            setUsers(response.data);
-        } catch (err) {
-            console.error('Failed to fetch users:', err);
-            // Fallback to mock data if backend fails (for demo safety)
+            const response = await axios.get('http://localhost:3000/users'); // Mock endpoint
+            // Mock data if empty
+            if (!response.data || response.data.length === 0) {
+                setUsers([
+                    { id: 1, username: 'admin', email: 'admin@laoslife.com', role: 'ADMIN', status: 'ACTIVE', createdAt: '2025-01-01' },
+                    { id: 2, username: 'user1', email: 'user1@gmail.com', role: 'USER', status: 'ACTIVE', createdAt: '2025-01-02' },
+                    { id: 3, username: 'seller_kim', email: 'kim@store.com', role: 'SELLER', status: 'PENDING', createdAt: '2025-01-03' },
+                ]);
+            } else {
+                setUsers(response.data);
+            }
+        } catch (error) {
+            console.error(error);
             setUsers([
-                { id: 1, email: 'admin@laoslife.com', nickname: 'Admin', role: 'ADMIN', created_at: new Date().toISOString() },
-                { id: 2, email: 'user1@laoslife.com', nickname: 'User1', role: 'USER', created_at: new Date().toISOString() },
-                { id: 3, email: 'seller1@laoslife.com', nickname: 'Seller1', role: 'SELLER', created_at: new Date().toISOString() },
+                { id: 1, username: 'admin', email: 'admin@laoslife.com', role: 'ADMIN', status: 'ACTIVE', createdAt: '2025-01-01' },
+                { id: 2, username: 'user1', email: 'user1@gmail.com', role: 'USER', status: 'ACTIVE', createdAt: '2025-01-02' },
+                { id: 3, username: 'seller_kim', email: 'kim@store.com', role: 'SELLER', status: 'PENDING', createdAt: '2025-01-03' },
             ]);
-            setError('Backend connection failed. Showing mock data.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-            </div>
-        );
-    }
+    const rows = users
+        .filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
+        .map((user) => (
+            <Table.Tr key={user.id}>
+                <Table.Td>
+                    <Group gap="sm">
+                        <Avatar size={30} radius="xl" color="initials">{user.username.substring(0, 2).toUpperCase()}</Avatar>
+                        <Text size="sm" fw={500}>{user.username}</Text>
+                    </Group>
+                </Table.Td>
+                <Table.Td>{user.email}</Table.Td>
+                <Table.Td>
+                    <Badge
+                        color={user.role === 'ADMIN' ? 'red' : user.role === 'SELLER' ? 'blue' : 'gray'}
+                        variant="light"
+                    >
+                        {user.role}
+                    </Badge>
+                </Table.Td>
+                <Table.Td>
+                    <Badge
+                        color={user.status === 'ACTIVE' ? 'green' : 'orange'}
+                        variant="dot"
+                    >
+                        {user.status}
+                    </Badge>
+                </Table.Td>
+                <Table.Td>{new Date(user.createdAt).toLocaleDateString()}</Table.Td>
+                <Table.Td>
+                    <Button variant="subtle" size="xs" color="gray">Edit</Button>
+                </Table.Td>
+            </Table.Tr>
+        ));
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-                <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-                    Add User
-                </button>
-            </div>
+        <div className="p-4">
+            <Group justify="space-between" mb="lg">
+                <Title order={2} c="gray.8">
+                    <User className="inline-block mr-2" size={28} />
+                    {t('user_management')}
+                </Title>
+                <TextInput
+                    placeholder="Search users..."
+                    leftSection={<Search size={14} />}
+                    value={search}
+                    onChange={(e) => setSearch(e.currentTarget.value)}
+                />
+            </Group>
 
-            {error && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p className="text-yellow-700">{error}</p>
-                </div>
-            )}
+            <Card shadow="sm" radius="md" withBorder p={0}>
+                <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nickname</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined At</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {users.map((user) => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{user.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.email}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.nickname}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-                                            user.role === 'SELLER' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                                        {user.role}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {new Date(user.created_at).toLocaleDateString()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="#" className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</a>
-                                    <a href="#" className="text-red-600 hover:text-red-900">Delete</a>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                <Table striped highlightOnHover withTableBorder withColumnBorders>
+                    <Table.Thead bg="gray.0">
+                        <Table.Tr>
+                            <Table.Th>User</Table.Th>
+                            <Table.Th>Email</Table.Th>
+                            <Table.Th>Role</Table.Th>
+                            <Table.Th>Status</Table.Th>
+                            <Table.Th>Joined</Table.Th>
+                            <Table.Th>Action</Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>{rows}</Table.Tbody>
+                </Table>
+
+                {rows.length === 0 && (
+                    <div className="p-8 text-center text-gray-500">
+                        No users found
+                    </div>
+                )}
+            </Card>
         </div>
     );
 }

@@ -5,8 +5,8 @@ export class Shop {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
-    name: string;
+    @Column({ type: 'jsonb', default: {} })
+    name: any;
 
     @Column()
     category: string; // Main category (Food, Service, Repair)
@@ -20,11 +20,11 @@ export class Shop {
     @Column({ type: 'float', default: 0 })
     rating: number;
 
-    @Column()
-    location: string;
+    @Column({ type: 'jsonb', default: {} })
+    location: any;
 
-    @Column('text')
-    menuOrServices: string;
+    @Column({ type: 'jsonb', default: {} })
+    menuOrServices: any;
 
     @Column()
     phone: string;

@@ -6,8 +6,8 @@ export class Product {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
-    title: string;
+    @Column({ type: 'jsonb', default: {} })
+    title: any;
 
     @Column('decimal')
     price: number;
@@ -21,11 +21,14 @@ export class Product {
     @Column('simple-array', { nullable: true })
     photos: string[];
 
-    @Column('text')
-    description: string;
+    @Column({ type: 'jsonb', default: {} })
+    description: any;
 
     @ManyToOne(() => User)
     seller: User;
+
+    @Column({ default: 0 })
+    viewCount: number;
 
     @CreateDateColumn()
     created_at: Date;

@@ -1,8 +1,11 @@
 'use client';
 
-import { LayoutDashboard, Users, FileText, LogOut, Globe } from 'lucide-react';
+import { AppShell, Burger, Group, NavLink, Text, ActionIcon, Button, Avatar, SegmentedControl, ScrollArea } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { LayoutDashboard, Users, FileText, LogOut, Globe, BarChart2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
-import '../app/i18n'; // Import i18n config
+import { usePathname } from 'next/navigation';
+import '../app/i18n';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 
@@ -11,91 +14,152 @@ export default function ClientLayout({
 }: {
     children: React.ReactNode;
 }) {
+    const [opened, { toggle }] = useDisclosure();
     const { t, i18n } = useTranslation();
     const [mounted, setMounted] = useState(false);
+    const pathname = usePathname();
 
     useEffect(() => {
         setMounted(true);
+        // Log access
+        fetch('http://localhost:3000/statistics/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: window.location.pathname })
+        }).catch(err => console.error('Access log failed', err));
     }, []);
 
     const changeLanguage = (lng: string) => {
         i18n.changeLanguage(lng);
     };
 
-    if (!mounted) return null; // Prevent hydration mismatch
+    if (!mounted) return null;
 
     return (
-        <div className="flex h-screen">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-                <div className="p-6 border-b border-gray-100">
-                    <h1 className="text-2xl font-bold text-green-700">Laos Life</h1>
-                    <p className="text-xs text-gray-500 mt-1">Admin Dashboard</p>
-                </div>
+        <AppShell
+            header={{ height: 70 }}
+            navbar={{ width: 280, breakpoint: 'sm', collapsed: { mobile: !opened } }}
+            padding="md"
+        >
+            <AppShell.Header style={{ borderBottom: '1px solid #eee' }}>
+                <Group h="100%" px="md" justify="space-between">
+                    <Group>
+                        <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+                        <Text fw={900} variant="gradient" gradient={{ from: 'laosGreen', to: 'lime', deg: 45 }} size="xl">
+                            Laos Life Admin
+                        </Text>
+                    </Group>
+                    <Group>
+                        <SegmentedControl
+                            value={i18n.language}
+                            onChange={changeLanguage}
+                            data={[
+                                { label: 'EN', value: 'en' },
+                                { label: 'KO', value: 'ko' },
+                                { label: 'LO', value: 'lo' },
+                            ]}
+                            size="xs"
+                            radius="md"
+                        />
+                        <Avatar color="laosGreen" radius="xl" variant="light">A</Avatar>
+                    </Group>
+                </Group>
+            </AppShell.Header>
 
-                <nav className="flex-1 p-4 space-y-2">
-                    <Link href="/" className="flex items-center p-3 text-gray-700 hover:bg-green-50 rounded-lg group">
-                        <LayoutDashboard className="w-5 h-5 mr-3 text-gray-500 group-hover:text-green-600" />
-                        <span className="group-hover:text-green-700 font-medium">{t('dashboard')}</span>
-                    </Link>
-                    <Link href="/users" className="flex items-center p-3 text-gray-700 hover:bg-green-50 rounded-lg group">
-                        <Users className="w-5 h-5 mr-3 text-gray-500 group-hover:text-green-600" />
-                        <span className="group-hover:text-green-700 font-medium">{t('user_management')}</span>
-                    </Link>
-                    <Link href="/content" className="flex items-center p-3 text-gray-700 hover:bg-green-50 rounded-lg group">
-                        <FileText className="w-5 h-5 mr-3 text-gray-500 group-hover:text-green-600" />
-                        <span className="group-hover:text-green-700 font-medium">{t('content_management')}</span>
-                    </Link>
-                </nav>
+            <AppShell.Navbar p="md" className="bg-gradient-to-b from-[#006400] to-[#004d00]" style={{ borderRight: 'none' }}>
+                <ScrollArea>
+                    <Text size="xs" c="gray.3" mb="lg" mt="xs" fw={700} tt="uppercase" opacity={0.7} px="xs">DASHBOARD</Text>
 
-                <div className="p-4 border-t border-gray-100">
-                    <button className="flex items-center w-full p-3 text-red-600 hover:bg-red-50 rounded-lg transition">
-                        <LogOut className="w-5 h-5 mr-3" />
-                        <span className="font-medium">{t('logout')}</span>
-                    </button>
-                </div>
-            </aside>
+                    <NavLink
+                        component={Link}
+                        href="/"
+                        label={t('dashboard')}
+                        leftSection={<LayoutDashboard size="1.2rem" />}
+                        active={pathname === '/'}
+                        variant="subtle"
+                        c={pathname === '/' ? 'white' : 'gray.3'}
+                        bg={pathname === '/' ? 'white/20' : 'transparent'}
+                        style={{ borderRadius: 8 }}
+                        fw={500}
+                        mb={4}
+                    />
+                    <NavLink
+                        component={Link}
+                        href="/users"
+                        label={t('user_management')}
+                        leftSection={<Users size="1.2rem" />}
+                        active={pathname === '/users'}
+                        variant="subtle"
+                        c={pathname === '/users' ? 'white' : 'gray.3'}
+                        bg={pathname === '/users' ? 'white/20' : 'transparent'}
+                        style={{ borderRadius: 8 }}
+                        fw={500}
+                        mb={4}
+                    />
+                    <NavLink
+                        component={Link}
+                        href="/content"
+                        label={t('content_management')}
+                        leftSection={<FileText size="1.2rem" />}
+                        active={pathname === '/content'}
+                        variant="subtle"
+                        c={pathname === '/content' ? 'white' : 'gray.3'}
+                        bg={pathname === '/content' ? 'white/20' : 'transparent'}
+                        style={{ borderRadius: 8 }}
+                        fw={500}
+                        mb={4}
+                    />
+                    <NavLink
+                        component={Link}
+                        href="/codes"
+                        label={t('code_management')}
+                        leftSection={<Globe size="1.2rem" />}
+                        active={pathname === '/codes'}
+                        variant="subtle"
+                        c={pathname === '/codes' ? 'white' : 'gray.3'}
+                        bg={pathname === '/codes' ? 'white/20' : 'transparent'}
+                        style={{ borderRadius: 8 }}
+                        fw={500}
+                        mb={4}
+                    />
+                    <NavLink
+                        component={Link}
+                        href="/statistics"
+                        label={t('statistics')}
+                        leftSection={<BarChart2 size="1.2rem" />}
+                        active={pathname === '/statistics'}
+                        variant="subtle"
+                        c={pathname === '/statistics' ? 'white' : 'gray.3'}
+                        bg={pathname === '/statistics' ? 'white/20' : 'transparent'}
+                        style={{ borderRadius: 8 }}
+                        fw={500}
+                        mb={4}
+                    />
+                    <NavLink
+                        component={Link}
+                        href="/banners"
+                        label="Banner Management"
+                        leftSection={<ImageIcon size="1.2rem" />}
+                        active={pathname === '/banners'}
+                        variant="subtle"
+                        c={pathname === '/banners' ? 'white' : 'gray.3'}
+                        bg={pathname === '/banners' ? 'white/20' : 'transparent'}
+                        style={{ borderRadius: 8 }}
+                        fw={500}
+                        mb={4}
+                    />
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden">
-                {/* Top Header */}
-                <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 shadow-sm z-10">
-                    <h2 className="text-xl font-semibold text-gray-800">{t('dashboard')}</h2>
+                    <div style={{ height: 40 }} />
 
-                    <div className="flex items-center space-x-4">
-                        {/* Language Switcher */}
-                        <div className="flex bg-gray-100 rounded-lg p-1">
-                            <button
-                                onClick={() => changeLanguage('ko')}
-                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${i18n.language === 'ko' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                KO
-                            </button>
-                            <button
-                                onClick={() => changeLanguage('en')}
-                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${i18n.language === 'en' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                EN
-                            </button>
-                            <button
-                                onClick={() => changeLanguage('lo')}
-                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${i18n.language === 'lo' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                LO
-                            </button>
-                        </div>
+                    <Button variant="white" color="red" leftSection={<LogOut size="1rem" />} fullWidth justify="flex-start" bg="white/10" style={{ border: 'none', color: '#ffc9c9' }}>
+                        {t('logout')}
+                    </Button>
+                </ScrollArea>
+            </AppShell.Navbar>
 
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold">
-                            A
-                        </div>
-                    </div>
-                </header>
-
-                {/* Page Content */}
-                <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
-                    {children}
-                </div>
-            </main>
-        </div>
+            <AppShell.Main>
+                {children}
+            </AppShell.Main>
+        </AppShell>
     );
 }

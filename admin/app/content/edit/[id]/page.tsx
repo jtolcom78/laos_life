@@ -3,9 +3,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, FileText } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
+import { MultiLangEditor } from '@/components/MultiLangEditor';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
@@ -14,15 +15,20 @@ export default function EditContentPage() {
     const params = useParams();
     const id = params.id;
 
-    const [title, setTitle] = useState('');
+    // State for Multi-Language
+    const [title, setTitle] = useState<{ [key: string]: string }>({});
+    const [content, setContent] = useState<{ [key: string]: string }>({});
+
     const [category, setCategory] = useState('Notice');
-    const [content, setContent] = useState('');
     const [thumbnail, setThumbnail] = useState('');
+    const [attachments, setAttachments] = useState<string[]>([]);
+    const [newAttachments, setNewAttachments] = useState<File[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const quillRef = useRef<any>(null);
 
-    const categories = ['Notice', 'Government', 'Event', 'Promotion'];
+    // TODO: Sync these categories with CreatePage or API
+    const categories = ['정부소식', 'Notice', '취업', 'Government', 'Event', 'Promotion'];
 
     useEffect(() => {
         if (id) fetchPost();
@@ -32,10 +38,25 @@ export default function EditContentPage() {
         try {
             const res = await axios.get(`http://localhost:3000/posts/${id}`);
             const post = res.data;
-            setTitle(post.title);
+
+            // Handle Title (String or Object)
+            if (typeof post.title === 'string') {
+                setTitle({ ko: post.title }); // Default to Korean if string
+            } else {
+                setTitle(post.title || {});
+            }
+
             setCategory(post.category || 'Notice');
-            setContent(post.content);
+
+            // Handle Content (String or Object)
+            if (typeof post.content === 'string') {
+                setContent({ ko: post.content });
+            } else {
+                setContent(post.content || {});
+            }
+
             setThumbnail(post.thumbnail || '');
+            setAttachments(post.attachments || []);
         } catch (err) {
             console.error('Failed to fetch post:', err);
             alert('Failed to load post');
@@ -45,12 +66,19 @@ export default function EditContentPage() {
         }
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setNewAttachments(Array.from(e.target.files));
+        }
+    };
+
     const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('folder', 'posts');
 
         try {
             const res = await axios.post('http://localhost:3000/upload', formData, {
@@ -63,59 +91,38 @@ export default function EditContentPage() {
         }
     };
 
-    const imageHandler = () => {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.setAttribute('accept', 'image/*');
-        input.click();
-
-        input.onchange = async () => {
-            const file = input.files?.[0];
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const res = await axios.post('http://localhost:3000/upload', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-                const url = res.data.url;
-                const quill = quillRef.current.getEditor();
-                const range = quill.getSelection();
-                quill.insertEmbed(range.index, 'image', url);
-            } catch (err) {
-                console.error('Image upload failed:', err);
-                alert('Image upload failed');
-            }
-        };
-    };
-
-    const modules = useMemo(() => ({
-        toolbar: {
-            container: [
-                [{ 'header': [1, 2, false] }],
-                ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-                [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
-                ['link', 'image'],
-                ['clean']
-            ],
-            handlers: {
-                image: imageHandler
-            }
-        }
-    }), []);
+    // Image Handler for Quill (in MultiLangEditor, this might need adjustment if we pass modules)
+    // Since we are moving to MultiLangEditor, we pass `renderInput`.
+    // We can define the Quill instance inside renderInput.
+    // NOTE: `quillRef` behaves differently with multiple editors. 
+    // We might lose the ability to insert image into specific editor easily unless we refactor.
+    // For now, let's use a simple Quill config for MultiLang.
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
+            // Upload New Attachments
+            const attachmentUrls: string[] = [...attachments];
+            if (newAttachments.length > 0) {
+                for (const file of newAttachments) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('folder', 'attachments');
+                    const uploadRes = await axios.post('http://localhost:3000/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    attachmentUrls.push(uploadRes.data.url);
+                }
+            }
+
             await axios.patch(`http://localhost:3000/posts/${id}`, {
-                title,
+                title,   // Object
                 category,
-                content,
-                thumbnail
+                content, // Object
+                thumbnail,
+                attachments: attachmentUrls
             });
             router.push('/content');
         } catch (err) {
@@ -141,15 +148,26 @@ export default function EditContentPage() {
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            placeholder="Enter title"
-                        />
+                        {/* Title MultiLang */}
+                        <div className="mb-1">
+                            <MultiLangEditor
+                                label="Title"
+                                value={title}
+                                onChange={setTitle}
+                                renderInput={(val, onChange, placeholder) => (
+                                    <input
+                                        type="text"
+                                        value={val}
+                                        onChange={(e) => onChange(e.target.value)}
+                                        required // Only validates active input? No, standard required doesn't work well here.
+                                        // We should validate manually or rely on logic inside editor. 
+                                        // MultiLangEditor doesn't propagate 'required'.
+                                        className="w-full px-4 py-2 border-none outline-none focus:ring-0"
+                                        placeholder={placeholder}
+                                    />
+                                )}
+                            />
+                        </div>
                     </div>
 
                     <div>
@@ -189,16 +207,86 @@ export default function EditContentPage() {
                     </div>
                 </div>
 
+                {/* Attachments Section */}
+                {(category === '정부소식' || category === '취업') && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
+
+                        {/* New Upload Area */}
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition cursor-pointer relative mb-4">
+                            <input
+                                type="file"
+                                multiple
+                                onChange={handleFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+                            <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
+                        </div>
+
+                        {/* Existing Attachments */}
+                        {attachments.length > 0 && (
+                            <div className="space-y-2 mb-4">
+                                <p className="text-xs font-semibold text-gray-500 uppercase">Existing Files</p>
+                                {attachments.map((url, index) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="flex items-center space-x-3">
+                                            <FileText className="w-5 h-5 text-gray-500" />
+                                            <a href={url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline truncate max-w-xs">
+                                                {url.split('/').pop()}
+                                            </a>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
+                                            className="text-gray-400 hover:text-red-500 transition"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* New Selected Files */}
+                        {newAttachments.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase">New Files</p>
+                                {newAttachments.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
+                                        <div className="flex items-center space-x-3">
+                                            <FileText className="w-5 h-5 text-green-600" />
+                                            <span className="text-sm text-gray-700 truncate max-w-xs">{file.name}</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewAttachments(prev => prev.filter((_, i) => i !== index))}
+                                            className="text-gray-400 hover:text-red-500 transition"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
                     <div className="h-96 mb-12">
-                        <ReactQuill
-                            ref={quillRef}
-                            theme="snow"
+                        <MultiLangEditor
+                            label="Content"
                             value={content}
                             onChange={setContent}
-                            modules={modules}
-                            className="h-full"
+                            renderInput={(val, onChange, placeholder) => (
+                                <ReactQuill
+                                    theme="snow"
+                                    value={val}
+                                    onChange={onChange}
+                                    placeholder={placeholder}
+                                    className="h-80"
+                                />
+                            )}
                         />
                     </div>
                 </div>

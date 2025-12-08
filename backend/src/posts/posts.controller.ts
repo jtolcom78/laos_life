@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Headers } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -13,13 +13,15 @@ export class PostsController {
   }
 
   @Get()
-  findAll() {
-    return this.postsService.findAll();
+  findAll(@Headers('accept-language') lang: string) {
+    const targetLang = lang ? lang.split(',')[0].split('-')[0] : 'lo';
+    return this.postsService.findAllLocalized(targetLang);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.postsService.findOne(+id);
+  findOne(@Param('id') id: string, @Headers('accept-language') lang: string) {
+    const targetLang = lang ? lang.split(',')[0].split('-')[0] : 'lo';
+    return this.postsService.findOneLocalized(+id, targetLang);
   }
 
   @Patch(':id')

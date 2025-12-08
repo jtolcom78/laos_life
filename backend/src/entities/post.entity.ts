@@ -5,8 +5,8 @@ export class Post {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
-    title: string;
+    @Column({ type: 'jsonb', default: {} })
+    title: any;
 
     @Column({ nullable: true })
     category: string;
@@ -14,8 +14,11 @@ export class Post {
     @Column({ nullable: true })
     thumbnail: string;
 
-    @Column('text')
-    content: string;
+    @Column('simple-array', { nullable: true })
+    attachments: string[];
+
+    @Column({ type: 'jsonb', default: {} })
+    content: any;
 
     @CreateDateColumn()
     created_at: Date;

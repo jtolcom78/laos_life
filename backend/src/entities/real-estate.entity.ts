@@ -5,8 +5,8 @@ export class RealEstate {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
-    location: string;
+    @Column({ type: 'jsonb', default: {} })
+    location: any;
 
     @Column('decimal')
     price: number; // USD (Monthly rent or Sale price)
@@ -34,6 +34,12 @@ export class RealEstate {
 
     @Column('jsonb', { nullable: true })
     mapCoords: { lat: number; lng: number };
+
+    @Column({ type: 'jsonb', default: {} })
+    description: any;
+
+    @Column({ default: 0 })
+    viewCount: number;
 
     @CreateDateColumn()
     created_at: Date;

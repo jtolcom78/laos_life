@@ -5,8 +5,23 @@ export class Job {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
+    @Column({ nullable: true })
     industry: string;
+
+    @Column({ type: 'jsonb', default: {} })
+    title: any;
+
+    @Column({ type: 'jsonb', default: {} })
+    content: any;
+
+    @Column({ nullable: true })
+    thumbnail: string;
+
+    @Column({ nullable: true })
+    location: string;
+
+    @Column('simple-array', { nullable: true })
+    attachments: string[];
 
     @Column({ default: 'Full-time' })
     jobType: string; // Full-time, Part-time, Freelance
@@ -25,6 +40,9 @@ export class Job {
 
     @Column()
     contact: string;
+
+    @Column({ default: 0 })
+    viewCount: number;
 
     @CreateDateColumn()
     created_at: Date;

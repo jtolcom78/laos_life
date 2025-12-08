@@ -29,17 +29,20 @@ export class Car {
     @Column('decimal')
     price: number; // USD
 
-    @Column()
-    location: string; // Vientiane, etc.
+    @Column({ type: 'jsonb', default: {} })
+    location: any; // Vientiane, etc.
 
     @Column('simple-array', { nullable: true })
     photos: string[];
 
-    @Column({ type: 'text', nullable: true })
-    description: string;
+    @Column({ type: 'jsonb', nullable: true, default: {} })
+    description: any;
 
     @Column({ nullable: true })
     contact: string;
+
+    @Column({ default: 0 })
+    viewCount: number;
 
     @CreateDateColumn()
     created_at: Date;

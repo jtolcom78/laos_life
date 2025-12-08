@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 import { useTranslation } from 'react-i18next';
+import { Upload, X, FileText } from 'lucide-react';
+import { MultiLangEditor } from '@/components/MultiLangEditor';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
-// Define Category Structure
+// Define Category Structure matched with API/Entity
 const categoryStructure = [
     {
         name: '중고거래', id: 'shopping',
@@ -52,33 +54,85 @@ const categoryStructure = [
     },
 ];
 
+interface CommonCode {
+    id: number;
+    type: string;
+    code: string;
+    valueKo: string;
+    valueEn: string;
+    valueLo: string;
+    valueZh: string;
+    order: number;
+}
+
 export default function CreateContentPage() {
     const router = useRouter();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [loading, setLoading] = useState(false);
 
-    // Base Fields
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+    // Common Codes State
+    const [codes, setCodes] = useState<Record<string, CommonCode[]>>({});
+
+    // Base Fields - Multi-Language
+    const [title, setTitle] = useState<{ [key: string]: string }>({});
+    const [content, setContent] = useState<{ [key: string]: string }>({});
+
     const [mainCategory, setMainCategory] = useState(categoryStructure[0].name);
     const [subCategory, setSubCategory] = useState(categoryStructure[0].subs[0]);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
+    const [attachments, setAttachments] = useState<File[]>([]);
 
     // Dynamic Fields State
     const [price, setPrice] = useState('');
-    const [location, setLocation] = useState('');
-    // Car
+    const [location, setLocation] = useState(''); // Text for now, could be multilang later? Entity uses JSONB for location. 
+    // Wait, RealEstate/Shop/Car location IS JSONB.
+    // So Location input SHOULD be MultiLangEditor too!
+    // I'll change location to object.
+    const [multiLangLocation, setMultiLangLocation] = useState<{ [key: string]: string }>({});
+
+    // Car State
     const [brand, setBrand] = useState('');
     const [model, setModel] = useState('');
     const [year, setYear] = useState('');
     const [mileage, setMileage] = useState('');
-    // Real Estate
-    const [listingType, setListingType] = useState('Sale');
+    const [fuelType, setFuelType] = useState('');
+    const [transmission, setTransmission] = useState('');
+
+    // Real Estate State
+    const [listingType, setListingType] = useState('');
+    const [propertyType, setPropertyType] = useState('');
     const [bedrooms, setBedrooms] = useState('');
     const [bathrooms, setBathrooms] = useState('');
-    // Job
+
+    // Job State
     const [salary, setSalary] = useState('');
-    const [jobType, setJobType] = useState('Full-time');
+    const [jobType, setJobType] = useState('');
+    const [experience, setExperience] = useState('');
+
+    // Fetch Codes
+    useEffect(() => {
+        const fetchCodes = async () => {
+            const types = [
+                'CAR_BRAND', 'CAR_FUEL', 'CAR_TRANSMISSION',
+                'JOB_TYPE', 'JOB_EXPERIENCE',
+                'REAL_ESTATE_TYPE', 'REAL_ESTATE_LISTING'
+            ];
+            const newCodes: Record<string, CommonCode[]> = {};
+
+            for (const type of types) {
+                try {
+                    const res = await fetch(`http://localhost:3000/common-codes/${type}`);
+                    if (res.ok) {
+                        newCodes[type] = await res.json();
+                    }
+                } catch (e) {
+                    console.error(`Error fetching code ${type}`, e);
+                }
+            }
+            setCodes(newCodes);
+        };
+        fetchCodes();
+    }, []);
 
     // Update sub-categories when main category changes
     useEffect(() => {
@@ -88,18 +142,57 @@ export default function CreateContentPage() {
         } else {
             setSubCategory('');
         }
+        setAttachments([]);
     }, [mainCategory]);
+
+    const getCodeValue = (code: CommonCode) => {
+        const lang = i18n.language || 'ko'; // Default to Korean
+        if (lang.startsWith('en')) return code.valueEn;
+        if (lang.startsWith('lo')) return code.valueLo;
+        if (lang.startsWith('zh')) return code.valueZh;
+        return code.valueKo;
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setAttachments(Array.from(e.target.files));
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate MultiLang Fields
+        const hasTitle = Object.values(title).some(t => t.trim());
+        const hasContent = Object.values(content).some(c => c.trim());
+
+        if (!hasTitle) {
+            alert('Please enter a title in at least one language.');
+            return;
+        }
+
         setLoading(true);
 
         try {
+            // Determine Folder
+            let folder = 'others';
+            if (mainCategory === '중고거래') folder = 'products';
+            else if (['부동산'].includes(mainCategory)) folder = 'real_estates';
+            else if (mainCategory === '월세') folder = 'rents';
+            else if (mainCategory === '중고차') folder = 'cars';
+            else if (mainCategory === '취업') folder = 'jobs';
+            else if (mainCategory === '음식점') folder = 'restaurants';
+            else if (mainCategory === '설치/수리') folder = 'repairs';
+            else if (mainCategory === '청소') folder = 'cleaning';
+            else if (mainCategory === '서비스') folder = 'services';
+            else if (mainCategory === '정부소식') folder = 'news';
+
             // 1. Upload Thumbnail if exists
             let thumbnailUrl = '';
             if (thumbnail) {
                 const formData = new FormData();
                 formData.append('file', thumbnail);
+                formData.append('folder', folder);
                 const uploadRes = await fetch('http://localhost:3000/upload', {
                     method: 'POST',
                     body: formData,
@@ -108,14 +201,43 @@ export default function CreateContentPage() {
                 thumbnailUrl = uploadData.url;
             }
 
-            // 2. Prepare Payload based on Category
+            // 2. Upload Attachments (if any)
+            const attachmentUrls: string[] = [];
+            if (attachments.length > 0) {
+                for (const file of attachments) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('folder', 'attachments'); // Specifically to attachments folder
+                    const uploadRes = await fetch('http://localhost:3000/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    const uploadData = await uploadRes.json();
+                    attachmentUrls.push(uploadData.url);
+                }
+            }
+
+            // 3. Prepare Payload based on Category
+            // NOTE: title and content are now objects {lo, en...}
             const payload: any = {
-                title,
-                content,
-                category: mainCategory, // Or send ID? Backend expects string name currently for some entities
+                title, // JSONB
+                content, // JSONB (Note: some entities use 'description' or 'content')
+                description: content, // Map to description as fallback/primary depending on entity
+                // Product: title (jsonb), description (jsonb)
+                // RealEstate: location (jsonb), description (jsonb)
+                // Job: title (jsonb), content (jsonb)
+                // Post: title (jsonb), content (jsonb)
+                // Car: description (jsonb), location (jsonb)
+                // Shop: name (jsonb, mapped from title?), location (jsonb?), menuOrServices (jsonb?)
+
+                category: mainCategory,
                 subCategory,
                 thumbnail: thumbnailUrl,
             };
+
+            if (mainCategory === '취업' || mainCategory === '정부소식') {
+                payload.attachments = attachmentUrls;
+            }
 
             // Add dynamic fields
             if (mainCategory === '중고거래') {
@@ -123,20 +245,33 @@ export default function CreateContentPage() {
             } else if (mainCategory === '중고차') {
                 payload.brand = brand;
                 payload.model = model;
+                // Car doesnt have title field. It has description.
                 payload.year = Number(year);
                 payload.mileage = Number(mileage);
                 payload.price = Number(price);
+                payload.fuelType = fuelType;
+                payload.transmission = transmission;
+                payload.location = multiLangLocation; // Car uses JSONB location
             } else if (mainCategory === '부동산' || mainCategory === '월세') {
                 payload.price = Number(price);
-                payload.location = location;
-                payload.listingType = mainCategory === '월세' ? 'Rent' : 'Sale';
+                payload.location = multiLangLocation; // RealEstate uses JSONB location
+                payload.listingType = mainCategory === '월세' ? 'Rent' : listingType;
+                payload.propertyType = propertyType;
                 payload.bedrooms = Number(bedrooms);
             } else if (mainCategory === '취업') {
                 payload.salary = Number(salary);
                 payload.jobType = jobType;
+                payload.experience = experience;
+                payload.location = multiLangLocation; // Job uses JSONB location (updated?)
+                // Job Entity has location? Let's assume yes or use default
+            } else if (['음식점', '설치/수리', '청소', '서비스'].includes(mainCategory)) {
+                // Shop Mapping
+                payload.name = title; // Map title to name
+                payload.menuOrServices = content; // Map content to menuOrServices
+                payload.location = multiLangLocation;
             }
 
-            // 3. Create Post (Generic Endpoint for now, ideally separate endpoints)
+            // 4. Create Post (Generic Endpoint for now, ideally separate endpoints)
             let endpoint = 'http://localhost:3000/posts';
             if (mainCategory === '중고차') endpoint = 'http://localhost:3000/cars';
             else if (mainCategory === '부동산' || mainCategory === '월세') endpoint = 'http://localhost:3000/real-estates';
@@ -200,16 +335,43 @@ export default function CreateContentPage() {
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Details</h3>
 
                     {/* Common Fields */}
+                    {/* Title / Name (Multilingual) */}
                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                        <input
-                            type="text"
+                        <MultiLangEditor
+                            label={['음식점', '설치/수리', '청소', '서비스'].includes(mainCategory) ? 'Shop Name' : 'Title'}
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full p-3 border border-gray-200 rounded-lg"
-                            required
+                            onChange={setTitle}
+                            renderInput={(val, onChange, placeholder) => (
+                                <input
+                                    type="text"
+                                    value={val}
+                                    onChange={(e) => onChange(e.target.value)}
+                                    placeholder={placeholder}
+                                    className="w-full p-3 border-none outline-none focus:ring-0 text-gray-800"
+                                />
+                            )}
                         />
                     </div>
+
+                    {/* Location (Multilingual) - for RealEstate, Shop, Car */}
+                    {['부동산', '월세', '중고차', '음식점', '설치/수리', '청소', '서비스', '취업'].includes(mainCategory) && (
+                        <div className="mb-4">
+                            <MultiLangEditor
+                                label="Location"
+                                value={multiLangLocation}
+                                onChange={setMultiLangLocation}
+                                renderInput={(val, onChange, placeholder) => (
+                                    <input
+                                        type="text"
+                                        value={val}
+                                        onChange={(e) => onChange(e.target.value)}
+                                        placeholder={placeholder}
+                                        className="w-full p-3 border-none outline-none focus:ring-0 text-gray-800"
+                                    />
+                                )}
+                            />
+                        </div>
+                    )}
 
                     {/* Used Car Specifics */}
                     {mainCategory === '중고차' && (
@@ -218,14 +380,30 @@ export default function CreateContentPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
                                 <select value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
                                     <option value="">Select Brand</option>
-                                    <option value="Hyundai">Hyundai</option>
-                                    <option value="Kia">Kia</option>
-                                    <option value="Toyota">Toyota</option>
+                                    {codes['CAR_BRAND']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                                <input type="text" value={model} onChange={(e) => setModel(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
                                 <input type="number" value={year} onChange={(e) => setYear(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+                                <select value={fuelType} onChange={(e) => setFuelType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
+                                    <option value="">Select Fuel</option>
+                                    {codes['CAR_FUEL']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Transmission</label>
+                                <select value={transmission} onChange={(e) => setTransmission(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
+                                    <option value="">Select Transmission</option>
+                                    {codes['CAR_TRANSMISSION']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Mileage (km)</label>
@@ -242,10 +420,17 @@ export default function CreateContentPage() {
                     {(mainCategory === '부동산' || mainCategory === '월세') && (
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Listing Type</label>
                                 <select value={listingType} onChange={(e) => setListingType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
-                                    <option value="Sale">Sale</option>
-                                    <option value="Rent">Rent</option>
+                                    <option value="">Select Type</option>
+                                    {codes['REAL_ESTATE_LISTING']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
+                                <select value={propertyType} onChange={(e) => setPropertyType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
+                                    <option value="">Select Property Type</option>
+                                    {codes['REAL_ESTATE_TYPE']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -256,10 +441,7 @@ export default function CreateContentPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
                                 <input type="number" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
-                            </div>
+                            {/* Location removed from here as it's now handled by MultiLangLocation above */}
                         </div>
                     )}
 
@@ -269,8 +451,15 @@ export default function CreateContentPage() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
                                 <select value={jobType} onChange={(e) => setJobType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
-                                    <option value="Full-time">Full-time</option>
-                                    <option value="Part-time">Part-time</option>
+                                    <option value="">Select Job Type</option>
+                                    {codes['JOB_TYPE']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
+                                <select value={experience} onChange={(e) => setExperience(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
+                                    <option value="">Select Experience</option>
+                                    {codes['JOB_EXPERIENCE']?.map(c => <option key={c.code} value={c.valueKo}>{getCodeValue(c)}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -290,13 +479,67 @@ export default function CreateContentPage() {
                             accept="image/*"
                         />
                     </div>
+                    {/* Attachment Upload (For Jobs and News) */}
+                    {(mainCategory === '취업' || mainCategory === '정부소식') && (
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Attachments / Images
+                            </label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition cursor-pointer relative">
+                                <input
+                                    type="file"
+                                    multiple
+                                    onChange={handleFileChange}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <Upload className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
+                                <p className="text-xs text-gray-400 mt-1">Supports images and documents</p>
+                            </div>
+
+                            {/* Preview Selected Files */}
+                            {attachments.length > 0 && (
+                                <div className="mt-4 space-y-2">
+                                    {attachments.map((file, index) => (
+                                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                            <div className="flex items-center space-x-3">
+                                                <FileText className="w-5 h-5 text-gray-500" />
+                                                <span className="text-sm text-gray-700 truncate max-w-xs">{file.name}</span>
+                                                <span className="text-xs text-gray-400">({(file.size / 1024).toFixed(1)} KB)</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
+                                                className="text-gray-400 hover:text-red-500 transition"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Rich Text Editor */}
+                {/* Content (Multilingual) */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-                    <div className="h-64 mb-12">
-                        <ReactQuill theme="snow" value={content} onChange={setContent} className="h-full" />
+                    <div className="h-80 mb-12">
+                        <MultiLangEditor
+                            label="Content / Description"
+                            value={content}
+                            onChange={setContent}
+                            renderInput={(val, onChange, placeholder) => (
+                                <ReactQuill
+                                    theme="snow"
+                                    value={val}
+                                    onChange={onChange}
+                                    placeholder={placeholder}
+                                    className="h-64"
+                                />
+                            )}
+                        />
                     </div>
                 </div>
 

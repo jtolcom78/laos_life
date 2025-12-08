@@ -9,6 +9,8 @@ const resources = {
             dashboard: "Dashboard",
             user_management: "User Management",
             content_management: "Content Management",
+            code_management: "Common Codes",
+            statistics: "Statistics",
             total_users: "Total Users",
             active_listings: "Active Listings",
             new_reports: "New Reports",
@@ -22,7 +24,8 @@ const resources = {
             edit: "Edit",
             delete: "Delete",
             save: "Save",
-            cancel: "Cancel"
+            cancel: "Cancel",
+            create_content: "Create Content"
         }
     },
     ko: {
@@ -30,6 +33,8 @@ const resources = {
             dashboard: "대시보드",
             user_management: "사용자 관리",
             content_management: "콘텐츠 관리",
+            code_management: "공통 코드 관리",
+            statistics: "통계",
             total_users: "총 회원 수",
             active_listings: "등록된 매물",
             new_reports: "신고 접수",
@@ -43,7 +48,8 @@ const resources = {
             edit: "수정",
             delete: "삭제",
             save: "저장",
-            cancel: "취소"
+            cancel: "취소",
+            create_content: "콘텐츠 생성"
         }
     },
     lo: {
@@ -51,6 +57,8 @@ const resources = {
             dashboard: "ແຜງຄວບຄຸມ",
             user_management: "ການຈັດການຜູ້ໃຊ້",
             content_management: "ການຈັດການເນື້ອຫາ",
+            code_management: "ລະຫັດທົ່ວໄປ",
+            statistics: "ສະຖິຕິ",
             total_users: "ຜູ້ໃຊ້ທັງໝົດ",
             active_listings: "ລາຍການທີ່ເຄື່ອນໄຫວ",
             new_reports: "ລາຍງານໃໝ່",
@@ -64,7 +72,8 @@ const resources = {
             edit: "ແກ້ໄຂ",
             delete: "ລຶບ",
             save: "ບັນທຶກ",
-            cancel: "ຍົກເລີກ"
+            cancel: "ຍົກເລີກ",
+            create_content: "ສ້າງເນື້ອຫາ"
         }
     }
 };

@@ -105,6 +105,39 @@ export default function ContentPage() {
         }
     };
 
+    const getLangBadges = (field: any) => {
+        if (!field) return null;
+        if (typeof field === 'string') return <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-1 rounded">Single</span>;
+
+        const langs = ['lo', 'en', 'ko', 'zh'];
+        const flags: Record<string, string> = { lo: '🇱🇦', en: '🇺🇸', ko: '🇰🇷', zh: '🇨🇳' };
+
+        const available = langs.filter(l => field[l]);
+        if (available.length === 0) return <span className="ml-2 text-xs text-red-400 bg-red-50 px-1 rounded">Empty</span>;
+
+        return (
+            <div className="flex space-x-1 mt-1">
+                {langs.map(l => field[l] ? (
+                    <span key={l} className="text-xs" title={l.toUpperCase()}>
+                        {flags[l]}
+                    </span>
+                ) : null)}
+            </div>
+        );
+    };
+
+    const renderTitle = (title: any) => {
+        if (typeof title === 'string') return title;
+        if (!title) return 'No Title';
+        return title.ko || title.en || title.lo || Object.values(title)[0] || 'No Title';
+    };
+
+    const renderLocation = (loc: any) => {
+        if (typeof loc === 'string') return loc;
+        if (!loc) return '-';
+        return loc.ko || loc.en || loc.lo || Object.values(loc)[0] || '-';
+    };
+
     const renderRow = (item: any) => {
         const imageClass = "w-10 h-10 object-cover rounded bg-gray-200";
         const noImage = <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">No Img</div>;
@@ -114,7 +147,10 @@ export default function ContentPage() {
                 return (
                     <>
                         <td className="px-6 py-4 whitespace-nowrap">{item.thumbnail ? <img src={item.thumbnail} className={imageClass} /> : noImage}</td>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.title}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-medium text-gray-900">{renderTitle(item.title)}</div>
+                            {getLangBadges(item.title)}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{item.category}</span></td>
                     </>
                 );
@@ -122,7 +158,10 @@ export default function ContentPage() {
                 return (
                     <>
                         <td className="px-6 py-4 whitespace-nowrap">{item.photos?.[0] ? <img src={item.photos[0]} className={imageClass} /> : noImage}</td>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.title}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-medium text-gray-900">{renderTitle(item.title)}</div>
+                            {getLangBadges(item.title)}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${item.price}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-500">{item.status}</td>
                     </>
@@ -130,7 +169,10 @@ export default function ContentPage() {
             case 'jobs':
                 return (
                     <>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.industry}</td>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                            <div>{renderTitle(item.title)}</div>
+                            {getLangBadges(item.title)}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-500">{item.jobType}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">{item.salaryRange || item.salary}</td>
                     </>
@@ -141,14 +183,20 @@ export default function ContentPage() {
                         <td className="px-6 py-4 whitespace-nowrap">{item.photos?.[0] ? <img src={item.photos[0]} className={imageClass} /> : noImage}</td>
                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.listingType} - {item.propertyType}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${item.price}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 max-w-xs truncate">{item.location}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 max-w-xs truncate">
+                            {renderLocation(item.location)}
+                            {getLangBadges(item.location)}
+                        </td>
                     </>
                 );
             case 'shops':
                 return (
                     <>
                         <td className="px-6 py-4 whitespace-nowrap">{item.thumbnail ? <img src={item.thumbnail} className={imageClass} /> : noImage}</td>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-medium text-gray-900">{renderTitle(item.name)}</div>
+                            {getLangBadges(item.name)}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-500">{item.category} / {item.subCategory}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-yellow-500">★ {item.rating}</td>
                     </>
@@ -182,8 +230,8 @@ export default function ContentPage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${activeTab === tab.id
-                                ? 'bg-green-600 text-white font-medium shadow-sm'
-                                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                            ? 'bg-green-600 text-white font-medium shadow-sm'
+                            : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                             }`}
                     >
                         {tab.label}
@@ -216,7 +264,7 @@ export default function ContentPage() {
                                             {new Date(item.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <Link href={`/content/edit/${item.id}`} className="text-indigo-600 hover:text-indigo-900 mr-4 inline-flex items-center">
+                                            <Link href={`/content/edit/${item.id}?type=${activeTab}`} className="text-indigo-600 hover:text-indigo-900 mr-4 inline-flex items-center">
                                                 <Edit className="w-4 h-4" />
                                             </Link>
                                             <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900 inline-flex items-center">

@@ -44,6 +44,13 @@ export class User {
     })
     role: UserRole;
 
+    @Column({
+        type: 'enum',
+        enum: ['LO', 'KO', 'EN', 'ZH'],
+        default: 'LO'
+    })
+    preferred_language: string;
+
     @CreateDateColumn()
     created_at: Date;
 
