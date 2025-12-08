@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 // Android Emulator: 10.0.2.2, iOS Simulator: localhost
 // To demo externally: Replace this with your ngrok URL (e.g., 'https://your-id.ngrok-free.app')
 // const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-const API_URL = 'http://192.168.1.18:3000'; // Auto-detected LAN IP
+const API_URL = 'https://laos-life.onrender.com';
 // const API_URL = 'https://YOUR_NGROK_ID.ngrok-free.app';
 
 const axiosInstance = axios.create({
