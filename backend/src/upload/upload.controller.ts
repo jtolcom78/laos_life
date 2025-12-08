@@ -12,16 +12,18 @@ const ALLOWED_FOLDERS = [
 
 @Controller('upload')
 export class UploadController {
-    private supabase: SupabaseClient;
+    private supabase: SupabaseClient | undefined;
 
     constructor() {
-        console.log('DEBUG: UploadController initializing...');
-        console.log('DEBUG: SUPABASE_URL exists?', !!process.env.SUPABASE_URL);
-        console.log('DEBUG: SUPABASE_SERVICE_ROLE_KEY exists?', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-        console.log('DEBUG: SUPABASE_KEY exists?', !!process.env.SUPABASE_KEY);
+        console.log('DEBUG env check:', { URL: !!process.env.SUPABASE_URL, KEY: !!process.env.SUPABASE_KEY });
 
-        const supabaseUrl = process.env.SUPABASE_URL || '';
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '';
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            console.error('Supabase credentials missing! Upload function will fail.');
+            return;
+        }
 
         this.supabase = createClient(supabaseUrl, supabaseKey);
     }
@@ -46,7 +48,12 @@ export class UploadController {
         const fileExt = extname(file.originalname);
         const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}${fileExt}`;
 
-        const { data, error } = await this.supabase
+        if (!this.supabase) {
+            throw new Error('Supabase client is not initialized');
+        }
+        const supabase = this.supabase;
+
+        const { data, error } = await supabase
             .storage
             .from('images')
             .upload(fileName, file.buffer, {
@@ -59,7 +66,7 @@ export class UploadController {
             throw new Error('Upload failed');
         }
 
-        const { data: publicUrlData } = this.supabase
+        const { data: publicUrlData } = supabase
             .storage
             .from('images')
             .getPublicUrl(fileName);
