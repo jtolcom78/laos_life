@@ -11,7 +11,12 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors({
-    origin: true, // Allow all origins for testing (reflects request origin)
+    origin: [
+      'https://laoslife.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:8081',
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
