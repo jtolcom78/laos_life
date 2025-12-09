@@ -13,6 +13,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'https://laoslife.vercel.app',
+      'https://laos-life-bhg2fvtwo-seokhyunjees-projects.vercel.app',
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:8081',
